@@ -367,3 +367,78 @@ class MedicationEquivalencePartitioningTests(APITestCase):
             with self.subTest(test_case=test_case):
                 response = self.client.post(url, test_case, format='json')
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+class ExternalAPIMockTests(APITestCase):
+    """
+    Tests specifically for mocking the external DrugInfoService API.
+    These tests cover the requirements from the problem set.
+    """
+
+    def setUp(self):
+        self.medication = Medication.objects.create(
+            name="Aspirin",
+            dosage_mg=100,
+            prescribed_per_day=2
+        )
+
+    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    def test_external_api_mock_success(self, mock_get_drug_info):
+        """
+        Test mocking external API with successful response.
+        Uses patch decorator to mock the GET request response.
+        """
+        # Mock the external API response
+        mock_api_response = {
+            "results": [
+                {
+                    "openfda": {
+                        "brand_name": ["Aspirin"],
+                        "generic_name": ["acetylsalicylic acid"]
+                    },
+                    "dosage_form": ["TABLET"],
+                    "product_type": ["HUMAN OTC DRUG"]
+                }
+            ]
+        }
+        mock_get_drug_info.return_value = mock_api_response
+
+        url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        response = self.client.get(url)
+
+        # Verify the response
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, mock_api_response)
+
+        # Verify the mock was called with correct parameters
+        mock_get_drug_info.assert_called_once_with("Aspirin")
+
+    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    def test_external_api_mock_error(self, mock_get_drug_info):
+        """
+        Test mocking external API with error response.
+        """
+        # Mock API error
+        mock_api_error = {"error": "Service unavailable"}
+        mock_get_drug_info.return_value = mock_api_error
+
+        url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        response = self.client.get(url)
+
+        # Verify error handling
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertEqual(response.data, mock_api_error)
+
+    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    def test_external_api_mock_exception(self, mock_get_drug_info):
+        """
+        Test mocking external API when it raises an exception.
+        """
+        # Mock API exception
+        mock_get_drug_info.side_effect = Exception("Network error")
+
+        url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        response = self.client.get(url)
+
+        # Verify exception handling
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertIn("error", response.data)
