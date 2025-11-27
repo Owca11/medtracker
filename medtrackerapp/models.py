@@ -11,7 +11,7 @@ class Medication(models.Model):
     Each Medication instance can have multiple associated DoseLog
     entries that record when doses were taken or missed.
     """
-        
+
     name = models.CharField(max_length=100)
     dosage_mg = models.PositiveIntegerField()
     prescribed_per_day = models.PositiveIntegerField(help_text="Expected number of doses per day")
@@ -80,7 +80,13 @@ class Medication(models.Model):
             taken_at__date__lte=end_date
         )
         days = (end_date - start_date).days + 1
-        expected = self.expected_doses(days)
+
+        # Handle the case where prescribed_per_day is 0
+        try:
+            expected = self.expected_doses(days)
+        except ValueError:
+            # If expected_doses raises ValueError (due to prescribed_per_day <= 0), return 0.0
+            return 0.0
 
         if expected == 0:
             return 0.0
@@ -113,7 +119,7 @@ class DoseLog(models.Model):
     Each DoseLog entry corresponds to a specific date/time when the
     medication was either taken or missed.
     """
-        
+
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
     taken_at = models.DateTimeField()
     was_taken = models.BooleanField(default=True)
