@@ -3,7 +3,7 @@ name: Unit tests
 on:
   push:
     branches:
-      - develop
+      - developer
   pull_request:
     branches:
       - master
@@ -20,7 +20,7 @@ jobs:
           POSTGRES_PASSWORD: test
           POSTGRES_DB: medtracker_db
         ports:
-          - 8000:8000
+          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U django -d testdb"
           --health-interval=10s
@@ -43,19 +43,19 @@ jobs:
 
       - name: Wait for Postgres
         run: |
-          until pg_isready -h localhost -p 8000; do
+          until pg_isready -h localhost -p 5432; do
             echo "Waiting for Postgres..."
             sleep 2
           done
 
       - name: Apply migrations
         env:
-          DATABASE_URL: postgres://django:django@localhost:8000/testdb
+          DATABASE_URL: postgres://django:django@localhost:5432/testdb
         run: |
           python manage.py migrate
 
       - name: Run tests
         env:
-          DATABASE_URL: postgres://django:django@localhost:8000/testdb
+          DATABASE_URL: postgres://django:django@localhost:5432/testdb
         run: |
           python manage.py test medtrackerapp/tests
