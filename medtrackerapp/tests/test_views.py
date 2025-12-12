@@ -594,6 +594,4 @@ class ViewFinalCoverageTests(TestCase):
         }
         response = self.client.post(url, data, format='json')
 
-        # Depending on your validation, duplicates might be allowed or not
-        # Adjust assertion based on your business logic
         self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
