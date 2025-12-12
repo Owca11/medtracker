@@ -5,6 +5,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import datetime, date, timedelta
 from unittest.mock import patch
+import json
 
 
 class MedicationViewTests(TestCase):
@@ -49,7 +50,13 @@ class MedicationViewTests(TestCase):
         """Equivalence partition: valid update data"""
         url = reverse("medication-detail", kwargs={'pk': self.med.pk})
         update_data = {"name": "Aspirin Extra", "dosage_mg": 150, "prescribed_per_day": 2}
-        response = self.client.put(url, update_data, format='json')
+
+        # Explicitly set content type for PUT request
+        response = self.client.put(
+            url,
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.med.refresh_from_db()
@@ -75,7 +82,11 @@ class MedicationViewTests(TestCase):
     def test_update_medication_invalid_id(self):
         """Boundary testing: non-existent medication ID"""
         url = reverse("medication-detail", kwargs={'pk': 9999})
-        response = self.client.put(url, self.valid_payload, format='json')
+        response = self.client.put(
+            url,
+            data=json.dumps(self.valid_payload),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -232,7 +243,13 @@ class DoseLogViewTests(TestCase):
             "taken_at": timezone.now().isoformat(),
             "was_taken": False  # Changing from taken to missed
         }
-        response = self.client.put(url, update_data, format='json')
+
+        # Explicitly set content type for PUT request
+        response = self.client.put(
+            url,
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.dose_log.refresh_from_db()
