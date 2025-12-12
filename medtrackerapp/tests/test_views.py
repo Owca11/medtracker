@@ -1,4 +1,4 @@
-from rest_framework.test import APITestCase
+from django.test import TestCase
 from medtrackerapp.models import Medication, DoseLog
 from django.urls import reverse
 from rest_framework import status
@@ -7,7 +7,7 @@ from datetime import datetime, date, timedelta
 from unittest.mock import patch
 
 
-class MedicationViewTests(APITestCase):
+class MedicationViewTests(TestCase):
     def setUp(self):
         self.med = Medication.objects.create(name="Aspirin", dosage_mg=100, prescribed_per_day=2)
         self.valid_payload = {
@@ -183,7 +183,7 @@ class MedicationViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-class DoseLogViewTests(APITestCase):
+class DoseLogViewTests(TestCase):
     def setUp(self):
         self.med = Medication.objects.create(name="Aspirin", dosage_mg=100, prescribed_per_day=2)
         self.dose_log = DoseLog.objects.create(
@@ -350,8 +350,12 @@ class DoseLogViewTests(APITestCase):
 
 # EQUIVALENCE PARTITIONING TESTS
 
-class MedicationEquivalencePartitioningTests(APITestCase):
+class MedicationEquivalencePartitioningTests(TestCase):
     """Tests based on equivalence partitioning principles"""
+
+    def setUp(self):
+        # Each test will start fresh due to TestCase's transaction rollback
+        pass
 
     def test_dosage_equivalence_partitions(self):
         """Equivalence partitioning for dosage_mg in API"""
@@ -368,7 +372,8 @@ class MedicationEquivalencePartitioningTests(APITestCase):
                 response = self.client.post(url, test_case, format='json')
                 self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-class ExternalAPIMockTests(APITestCase):
+
+class ExternalAPIMockTests(TestCase):
     """
     Tests specifically for mocking the external DrugInfoService API.
     These tests cover the requirements from the problem set.
