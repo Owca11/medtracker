@@ -48,12 +48,6 @@ jobs:
             sleep 2
           done
 
-      - name: Apply migrations
-        env:
-          DATABASE_URL: postgres://django:django@localhost:5432/testdb
-        run: |
-          python manage.py migrate
-
       - name: Run tests
         env:
           DATABASE_URL: postgres://django:django@localhost:5432/testdb
