@@ -471,6 +471,7 @@ class ViewEdgeCaseTests(APITestCase):
     Tests to cover edge cases in views
     """
 
+
     def setUp(self):
         self.med = Medication.objects.create(name="Aspirin", dosage_mg=100, prescribed_per_day=2)
         self.dose_log = DoseLog.objects.create(
