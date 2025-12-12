@@ -466,7 +466,7 @@ class ExternalAPIMockTests(TestCase):
         self.assertIn("error", response.data)
 
 
-class ViewEdgeCaseTests(APITestCase):
+class ViewEdgeCaseTests(TestCase):
     """
     Tests to cover edge cases in views
     """
@@ -526,7 +526,7 @@ class ViewEdgeCaseTests(APITestCase):
 
 # Replace the problematic test with this corrected version
 
-class ViewFinalCoverageTests(APITestCase):
+class ViewFinalCoverageTests(TestCase):
     """
     Final tests to reach 100% coverage in views.py
     """
