@@ -10,8 +10,6 @@ class MedicationViewSet(viewsets.ModelViewSet):
     API endpoint for viewing and managing medications.
 
     Provides standard CRUD operations via the Django REST Framework
-    `ModelViewSet`, as well as a custom action for retrieving
-    additional information from an external API (OpenFDA).
 
     Endpoints:
         - GET /medications/ — list all medications
@@ -20,6 +18,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
         - PUT/PATCH /medications/{id}/ — update a medication
         - DELETE /medications/{id}/ — delete a medication
         - GET /medications/{id}/info/ — fetch external drug info from OpenFDA
+        - GET /medications/{id}/expected-doses/ — calculate expected doses over days
     """
     queryset = Medication.objects.all()
     serializer_class = MedicationSerializer
@@ -50,6 +49,84 @@ class MedicationViewSet(viewsets.ModelViewSet):
         if isinstance(data, dict) and data.get("error"):
             return Response(data, status=status.HTTP_502_BAD_GATEWAY)
         return Response(data)
+
+    @action(detail=True, methods=["get"], url_path="expected-doses")
+    def expected_doses(self, request, pk=None):
+        """
+        Calculate expected number of doses for a medication over a given number of days.
+
+        Query Parameters:
+            - days (int): Number of days for calculation (must be positive integer > 0).
+
+        Returns:
+            Response:
+                - 200 OK: Returns medication_id, days, and expected_doses.
+                - 400 BAD REQUEST: If days parameter is missing, invalid, or calculation fails.
+                - 404 NOT FOUND: If medication with given ID does not exist.
+
+        Example:
+            GET /medications/1/expected-doses/?days=7
+        """
+        medication = self.get_object()
+
+        # Validate days parameter
+        days = self._validate_days_parameter(request)
+        if isinstance(days, Response):
+            return days
+
+        # Calculate expected doses
+        try:
+            expected_doses = medication.expected_doses(days)
+        except ValueError as e:
+            return Response(
+                {"error": f"Calculation failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Return success response
+        return Response({
+            "medication_id": medication.id,
+            "days": days,
+            "expected_doses": expected_doses
+        })
+
+    def _validate_days_parameter(self, request):
+        """
+        Validate the 'days' query parameter.
+
+        Args:
+            request: HTTP request object
+
+        Returns:
+            int: Validated days value if successful
+            Response: Error response if validation fails
+        """
+        days_param = request.query_params.get("days")
+
+        # Check if parameter exists
+        if days_param is None:
+            return Response(
+                {"error": "Query parameter 'days' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if parameter can be converted to integer
+        try:
+            days = int(days_param)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Days must be a valid integer."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if parameter is positive
+        if days <= 0:
+            return Response(
+                {"error": "Days must be a positive integer greater than zero."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return days
 
 
 class DoseLogViewSet(viewsets.ModelViewSet):
@@ -89,23 +166,12 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         Example:
             GET /logs/filter/?start=2025-11-01&end=2025-11-07
         """
-        start_str = request.query_params.get("start")
-        end_str = request.query_params.get("end")
+        start = parse_date(request.query_params.get("start"))
+        end = parse_date(request.query_params.get("end"))
 
-        # Check if parameters are provided
-        if start_str is None or end_str is None:
+        if not start or not end:
             return Response(
                 {"error": "Both 'start' and 'end' query parameters are required and must be valid dates."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        start = parse_date(start_str)
-        end = parse_date(end_str)
-
-        # Check if parameters are valid dates
-        if start is None or end is None:
-            return Response(
-                {"error": "Both 'start' and 'end' must be valid dates in YYYY-MM-DD format."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
