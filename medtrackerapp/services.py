@@ -57,23 +57,23 @@ class DrugInfoService:
         if not drug_name:
             raise ValueError("drug_name is required")
 
-        params = {"search": f"openfda.generic_name:{drug_name.lower()}", "limit": 1}
-
-        resp = requests.get(cls.BASE_URL, params=params, timeout=10)
-        if resp.status_code != 200:
-            raise ValueError(f"OpenFDA API error: {resp.status_code}")
-
-        data = resp.json()
-        results = data.get("results")
-        if not results:
-            raise ValueError("No results found for this medication.")
-
-        record = results[0]
-        openfda = record.get("openfda", {})
-
-        return {
-            "name": openfda.get("generic_name", [drug_name])[0] if isinstance(openfda.get("generic_name"), list) else openfda.get("generic_name", drug_name),
-            "manufacturer": openfda.get("manufacturer_name", ["Unknown"])[0] if isinstance(openfda.get("manufacturer_name"), list) else openfda.get("manufacturer_name", "Unknown"),
-            "warnings": record.get("warnings", ["No warnings available"]),
-            "purpose": record.get("purpose", ["Not specified"]),
-        }
+        # params = {"search": f"openfda.generic_name:{drug_name.lower()}", "limit": 1}
+        #
+        # resp = requests.get(cls.BASE_URL, params=params, timeout=10)
+        # if resp.status_code != 200:
+        #     raise ValueError(f"OpenFDA API error: {resp.status_code}")
+        #
+        # data = resp.json()
+        # results = data.get("results")
+        # if not results:
+        #     raise ValueError("No results found for this medication.")
+        #
+        # record = results[0]
+        # openfda = record.get("openfda", {})
+        #
+        # return {
+        #     "name": openfda.get("generic_name", [drug_name])[0] if isinstance(openfda.get("generic_name"), list) else openfda.get("generic_name", drug_name),
+        #     "manufacturer": openfda.get("manufacturer_name", ["Unknown"])[0] if isinstance(openfda.get("manufacturer_name"), list) else openfda.get("manufacturer_name", "Unknown"),
+        #     "warnings": record.get("warnings", ["No warnings available"]),
+        #     "purpose": record.get("purpose", ["Not specified"]),
+        # }
