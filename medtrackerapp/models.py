@@ -11,7 +11,7 @@ class Medication(models.Model):
     Each Medication instance can have multiple associated DoseLog
     entries that record when doses were taken or missed.
     """
-
+        
     name = models.CharField(max_length=100)
     dosage_mg = models.PositiveIntegerField()
     prescribed_per_day = models.PositiveIntegerField(help_text="Expected number of doses per day")
@@ -119,7 +119,7 @@ class DoseLog(models.Model):
     Each DoseLog entry corresponds to a specific date/time when the
     medication was either taken or missed.
     """
-
+        
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
     taken_at = models.DateTimeField()
     was_taken = models.BooleanField(default=True)
@@ -133,3 +133,31 @@ class DoseLog(models.Model):
         status = "Taken" if self.was_taken else "Missed"
         when = timezone.localtime(self.taken_at).strftime("%Y-%m-%d %H:%M")
         return f"{self.medication.name} at {when} - {status}"
+
+
+class Note(models.Model):
+    """
+    Represents a doctor's note associated with a medication.
+
+    Notes can provide additional instructions, observations, or
+    reminders related to a specific medication.
+    """
+    medication = models.ForeignKey(
+        Medication,
+        on_delete=models.CASCADE,
+        help_text="Medication this note is associated with"
+    )
+    text = models.TextField(
+        help_text="Content of the doctor's note"
+    )
+    date = models.DateField(
+        help_text="Date when the note was created"
+    )
+
+    class Meta:
+        """Metadata options for the Note model."""
+        ordering = ["-date"]  # Newest notes first
+
+    def __str__(self):
+        """Return a human-readable representation of the note."""
+        return f"Note for {self.medication.name} on {self.date}: {self.text[:50]}..."
