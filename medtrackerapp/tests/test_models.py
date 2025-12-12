@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime, date
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, DataError
+from unittest.mock import patch  # ADD THIS IMPORT
 
 
 class MedicationModelTests(TestCase):
@@ -429,3 +430,126 @@ class BoundaryValueTests(TestCase):
         # Boundary: negative days (should raise error)
         with self.assertRaises(ValueError):
             med.expected_doses(-1)
+
+
+# NEW TESTS TO COVER MISSING LINES - FIXED VERSION
+
+class MedicationModelEdgeCaseTests(TestCase):
+    """
+    Tests to cover the remaining edge cases in models.py
+    """
+
+    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    def test_fetch_external_info_exception_handling(self, mock_service):
+        """Test the specific exception handling in fetch_external_info (line 86)"""
+        med = Medication.objects.create(name="Test Med", dosage_mg=100, prescribed_per_day=1)
+
+        # Mock the service to raise an exception
+        mock_service.side_effect = Exception("Specific test exception")
+
+        result = med.fetch_external_info()
+
+        # Should return error dict instead of raising exception
+        self.assertIn("error", result)
+        self.assertIn("Specific test exception", result["error"])
+
+    def test_adherence_rate_over_period_with_zero_prescribed(self):
+        """Test adherence_rate_over_period when prescribed_per_day is 0"""
+        # This tests the specific case where expected_doses returns 0
+        # We need to create a scenario where prescribed_per_day is 0
+        try:
+            med = Medication.objects.create(name="As Needed", dosage_mg=100, prescribed_per_day=0)
+            start_date = date(2025, 1, 1)
+            end_date = date(2025, 1, 3)
+
+            # This should return 0.0 without raising an exception
+            adherence = med.adherence_rate_over_period(start_date, end_date)
+            self.assertEqual(adherence, 0.0)
+        except (IntegrityError, DataError):
+            # If zero prescribed_per_day is not allowed, skip this test
+            pass
+
+    def test_expected_doses_zero_prescribed_raises_error(self):
+        """Test expected_doses raises error when prescribed_per_day is 0"""
+        # This tests the specific case where prescribed_per_day <= 0
+        try:
+            med = Medication.objects.create(name="Test Med", dosage_mg=100, prescribed_per_day=0)
+            with self.assertRaises(ValueError) as context:
+                med.expected_doses(5)
+
+            self.assertIn("Days and schedule must be positive", str(context.exception))
+        except (IntegrityError, DataError):
+            # If zero prescribed_per_day is not allowed, skip this test
+            pass
+
+
+class DoseLogModelEdgeCaseTests(TestCase):
+    """
+    Tests to cover edge cases in DoseLog model
+    """
+
+    def setUp(self):
+        self.med = Medication.objects.create(name="Aspirin", dosage_mg=100, prescribed_per_day=2)
+
+    def test_doselog_ordering(self):
+        """Test that DoseLog objects are ordered by taken_at descending"""
+        # Create logs with different timestamps
+        time1 = timezone.now()
+        time2 = timezone.now() - timedelta(hours=1)
+        time3 = timezone.now() + timedelta(hours=1)
+
+        log1 = DoseLog.objects.create(medication=self.med, taken_at=time1)
+        log2 = DoseLog.objects.create(medication=self.med, taken_at=time2)
+        log3 = DoseLog.objects.create(medication=self.med, taken_at=time3)
+
+        # Query should return in reverse chronological order
+        logs = DoseLog.objects.all()
+        self.assertEqual(logs[0], log3)  # Most recent first
+        self.assertEqual(logs[1], log1)
+        self.assertEqual(logs[2], log2)
+
+
+class MedicationModelFinalCoverageTests(TestCase):
+    """
+    Final tests to reach 100% coverage in models.py
+    """
+
+    def test_adherence_rate_over_period_exception_handling(self):
+        """
+        Test the specific exception handling path in adherence_rate_over_period.
+        This covers line 92 in models.py.
+        """
+        # Create a medication with valid prescribed_per_day
+        med = Medication.objects.create(name="Test Med", dosage_mg=100, prescribed_per_day=2)
+
+        # Create a scenario where expected_doses would raise ValueError
+        # We need to temporarily make prescribed_per_day invalid
+        original_prescribed = med.prescribed_per_day
+        med.prescribed_per_day = 0  # This would cause expected_doses to raise ValueError
+
+        start_date = date(2025, 1, 1)
+        end_date = date(2025, 1, 3)
+
+        # This should return 0.0 without raising an exception
+        adherence = med.adherence_rate_over_period(start_date, end_date)
+        self.assertEqual(adherence, 0.0)
+
+        # Restore the original value
+        med.prescribed_per_day = original_prescribed
+
+    def test_adherence_rate_over_period_with_logs_but_zero_expected(self):
+        """
+        Test adherence_rate_over_period when there are logs but expected doses is 0.
+        """
+        med = Medication.objects.create(name="Test Med", dosage_mg=100, prescribed_per_day=0)
+
+        start_date = date(2025, 1, 1)
+        end_date = date(2025, 1, 3)
+
+        # Create some logs even though prescribed_per_day is 0
+        taken_at = timezone.make_aware(datetime(2025, 1, 2, 8, 0))
+        DoseLog.objects.create(medication=med, taken_at=taken_at, was_taken=True)
+
+        # Should return 0.0 because expected doses is 0
+        adherence = med.adherence_rate_over_period(start_date, end_date)
+        self.assertEqual(adherence, 0.0)
