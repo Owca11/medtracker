@@ -467,7 +467,10 @@ class ExternalAPIMockTests(TestCase):
 
 
 class ViewEdgeCaseTests(TestCase):
-    """Edge case tests for views"""
+    """
+    Tests to cover edge cases in views
+    """
+
 
     def setUp(self):
         # Create one medication for baseline
@@ -502,7 +505,38 @@ class ViewEdgeCaseTests(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.name, "Updated Aspirin")
+        # Other fields should remain unchanged
+        self.assertEqual(self.med.dosage_mg, 100)
+
+
+# Replace the problematic test with this corrected version
+
+class ViewFinalCoverageTests(TestCase):
+    """
+    Final tests to reach 100% coverage in views.py
+    """
+
+    def setUp(self):
+        self.med = Medication.objects.create(name="Aspirin", dosage_mg=100, prescribed_per_day=2)
+
+    def test_filter_by_date_specific_error_path(self):
+        """
+        Test the specific error path in filter_by_date that covers line 97.
+        This tests when parse_date returns None for invalid dates.
+        """
+        url = reverse("doselog-filter-by-date")
+
+        # Test with dates that parse_date cannot parse (will return None, not raise exception)
+        response = self.client.get(url, {
+            'start': 'invalid-date-format',  # This will make parse_date return None
+            'end': 'also-invalid-format'  # This will make parse_date return None
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        self.assertIn("valid dates", response.data["error"])
 
     def test_medication_with_zero_dosage(self):
         """Test creating medication with zero dosage (boundary case)"""
