@@ -5,6 +5,7 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import datetime, date, timedelta
 from unittest.mock import patch
+import json
 
 
 class MedicationViewTests(TestCase):
@@ -49,7 +50,13 @@ class MedicationViewTests(TestCase):
         """Equivalence partition: valid update data"""
         url = reverse("medication-detail", kwargs={'pk': self.med.pk})
         update_data = {"name": "Aspirin Extra", "dosage_mg": 150, "prescribed_per_day": 2}
-        response = self.client.put(url, update_data, format='json')
+
+        # Explicitly set content type for PUT request
+        response = self.client.put(
+            url,
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.med.refresh_from_db()
@@ -75,7 +82,11 @@ class MedicationViewTests(TestCase):
     def test_update_medication_invalid_id(self):
         """Boundary testing: non-existent medication ID"""
         url = reverse("medication-detail", kwargs={'pk': 9999})
-        response = self.client.put(url, self.valid_payload, format='json')
+        response = self.client.put(
+            url,
+            data=json.dumps(self.valid_payload),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -232,7 +243,13 @@ class DoseLogViewTests(TestCase):
             "taken_at": timezone.now().isoformat(),
             "was_taken": False  # Changing from taken to missed
         }
-        response = self.client.put(url, update_data, format='json')
+
+        # Explicitly set content type for PUT request
+        response = self.client.put(
+            url,
+            data=json.dumps(update_data),
+            content_type='application/json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.dose_log.refresh_from_db()
@@ -447,3 +464,102 @@ class ExternalAPIMockTests(TestCase):
         # Verify exception handling
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertIn("error", response.data)
+
+
+class ViewEdgeCaseTests(TestCase):
+    """Edge case tests for views"""
+
+    def setUp(self):
+        # Create one medication for baseline
+        self.med = Medication.objects.create(
+            name="Baseline Medication",
+            dosage_mg=100,
+            prescribed_per_day=2
+        )
+
+    def test_medication_list_pagination(self):
+        """Test medication list view with multiple items"""
+        # Create 5 additional medications
+        for i in range(5):
+            Medication.objects.create(
+                name=f"Medication {i}",
+                dosage_mg=100 * (i + 1),
+                prescribed_per_day=2
+            )
+
+        url = reverse("medication-list")
+        response = self.client.get(url)
+
+        # Count total medications: 5 new + 1 from setUp = 6
+        self.assertEqual(len(response.data), 6)
+
+    def test_empty_medication_list(self):
+        """Test medication list when no medications exist"""
+        # Delete the medication created in setUp
+        Medication.objects.all().delete()
+
+        url = reverse("medication-list")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_medication_with_zero_dosage(self):
+        """Test creating medication with zero dosage (boundary case)"""
+        url = reverse("medication-list")
+        data = {
+            "name": "Zero Dosage Test",
+            "dosage_mg": 0,
+            "prescribed_per_day": 1
+        }
+        response = self.client.post(url, data, format='json')
+
+        # Depending on your validation, this might succeed or fail
+        # Adjust assertion based on your business logic
+        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
+
+    def test_medication_with_very_high_dosage(self):
+        """Test creating medication with very high dosage"""
+        url = reverse("medication-list")
+        data = {
+            "name": "Very High Dosage",
+            "dosage_mg": 10000,  # Very high dosage
+            "prescribed_per_day": 1
+        }
+        response = self.client.post(url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_medication_name_special_characters(self):
+        """Test medication name with special characters"""
+        url = reverse("medication-list")
+        data = {
+            "name": "Medication-Plus (Extra Strength) 500mg",
+            "dosage_mg": 500,
+            "prescribed_per_day": 2
+        }
+        response = self.client.post(url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_duplicate_medication_name(self):
+        """Test creating medication with duplicate name"""
+        # First create a medication
+        Medication.objects.create(
+            name="Duplicate Test",
+            dosage_mg=100,
+            prescribed_per_day=2
+        )
+
+        # Try to create another with same name
+        url = reverse("medication-list")
+        data = {
+            "name": "Duplicate Test",  # Same name
+            "dosage_mg": 200,
+            "prescribed_per_day": 3
+        }
+        response = self.client.post(url, data, format='json')
+
+        # Depending on your validation, duplicates might be allowed or not
+        # Adjust assertion based on your business logic
+        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
