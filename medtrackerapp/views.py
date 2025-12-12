@@ -10,6 +10,8 @@ class MedicationViewSet(viewsets.ModelViewSet):
     API endpoint for viewing and managing medications.
 
     Provides standard CRUD operations via the Django REST Framework
+    `ModelViewSet`, as well as a custom action for retrieving
+    additional information from an external API (OpenFDA).
 
     Endpoints:
         - GET /medications/ — list all medications
@@ -56,7 +58,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
         Calculate expected number of doses for a medication over a given number of days.
 
         Query Parameters:
-            - days (int): Number of days for calculation (must be positive integer > 0).
+            - days (int): Number of days for calculation (must be positive integer).
 
         Returns:
             Response:
@@ -67,19 +69,20 @@ class MedicationViewSet(viewsets.ModelViewSet):
         Example:
             GET /medications/1/expected-doses/?days=7
         """
+        # Validate days parameter
+        validation_result = self._validate_days_parameter(request)
+        if isinstance(validation_result, Response):
+            return validation_result
+
+        days = validation_result
         medication = self.get_object()
 
-        # Validate days parameter
-        days = self._validate_days_parameter(request)
-        if isinstance(days, Response):
-            return days
-
-        # Calculate expected doses
+        # Calculate expected doses using the model method
         try:
-            expected_doses = medication.expected_doses(days)
-        except ValueError as e:
+            expected_doses_value = medication.expected_doses(days)
+        except ValueError as error:
             return Response(
-                {"error": f"Calculation failed: {str(e)}"},
+                {"error": str(error)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -87,7 +90,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
         return Response({
             "medication_id": medication.id,
             "days": days,
-            "expected_doses": expected_doses
+            "expected_doses": expected_doses_value
         })
 
     def _validate_days_parameter(self, request):
@@ -112,7 +115,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
 
         # Check if parameter can be converted to integer
         try:
-            days = int(days_param)
+            days_value = int(days_param)
         except (ValueError, TypeError):
             return Response(
                 {"error": "Days must be a valid integer."},
@@ -120,13 +123,13 @@ class MedicationViewSet(viewsets.ModelViewSet):
             )
 
         # Check if parameter is positive
-        if days <= 0:
+        if days_value <= 0:
             return Response(
                 {"error": "Days must be a positive integer greater than zero."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        return days
+        return days_value
 
 
 class DoseLogViewSet(viewsets.ModelViewSet):
@@ -166,12 +169,23 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         Example:
             GET /logs/filter/?start=2025-11-01&end=2025-11-07
         """
-        start = parse_date(request.query_params.get("start"))
-        end = parse_date(request.query_params.get("end"))
+        start_str = request.query_params.get("start")
+        end_str = request.query_params.get("end")
 
-        if not start or not end:
+        # Check if parameters are provided
+        if start_str is None or end_str is None:
             return Response(
                 {"error": "Both 'start' and 'end' query parameters are required and must be valid dates."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        start = parse_date(start_str)
+        end = parse_date(end_str)
+
+        # Check if parameters are valid dates
+        if start is None or end is None:
+            return Response(
+                {"error": "Both 'start' and 'end' must be valid dates in YYYY-MM-DD format."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -182,3 +196,50 @@ class DoseLogViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(logs, many=True)
         return Response(serializer.data)
+
+
+from .models import Note
+from .serializers import NoteSerializer
+
+
+class NoteViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for viewing and managing doctor's notes.
+
+    A Note represents additional information or instructions
+    from a doctor regarding a specific medication.
+
+    Endpoints:
+        - GET /notes/ — list all notes
+        - POST /notes/ — create a new note
+        - GET /notes/{id}/ — retrieve a specific note
+        - DELETE /notes/{id}/ — delete a note
+        - PUT/PATCH are NOT ALLOWED (notes cannot be updated)
+    """
+    queryset = Note.objects.all()
+    serializer_class = NoteSerializer
+
+    # Disable PUT and PATCH methods since notes cannot be updated
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+
+    def get_queryset(self):
+        """
+        Optionally filter notes by medication ID.
+
+        Query Parameters:
+            medication (int): Filter notes by medication ID
+
+        Example:
+            GET /notes/?medication=1
+        """
+        queryset = Note.objects.all()
+        medication_id = self.request.query_params.get('medication')
+
+        if medication_id is not None:
+            try:
+                queryset = queryset.filter(medication_id=int(medication_id))
+            except ValueError:
+                # If medication_id is not a valid integer, return empty queryset
+                queryset = Note.objects.none()
+
+        return queryset
