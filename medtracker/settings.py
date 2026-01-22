@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "medtrackerapp",
+    "drf_yasg",
 ]
 
 MIDDLEWARE = [
