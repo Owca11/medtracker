@@ -2,8 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils.dateparse import parse_date
-from .models import Medication, DoseLog
-from .serializers import MedicationSerializer, DoseLogSerializer
+from .models import Medication, DoseLog, Note
+from .serializers import MedicationSerializer, DoseLogSerializer, NoteSerializer
+from rest_framework.filters import SearchFilter
+
 
 class MedicationViewSet(viewsets.ModelViewSet):
     """
@@ -198,10 +200,6 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-from .models import Note
-from .serializers import NoteSerializer
-
-
 class NoteViewSet(viewsets.ModelViewSet):
     """
     API endpoint for viewing and managing doctor's notes.
@@ -218,19 +216,23 @@ class NoteViewSet(viewsets.ModelViewSet):
     """
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
+    filter_backends = (SearchFilter,)
+    search_fields = ['medication__name']
 
     # Disable PUT and PATCH methods since notes cannot be updated
     http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         """
-        Optionally filter notes by medication ID.
+        Optionally filter notes by medication ID and/or search by medication name.
 
         Query Parameters:
             medication (int): Filter notes by medication ID
+            search (str): Search notes by medication name (partial match)
 
-        Example:
+        Examples:
             GET /notes/?medication=1
+            GET /notes/?search=aspirin
         """
         queryset = Note.objects.all()
         medication_id = self.request.query_params.get('medication')
