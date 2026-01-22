@@ -429,7 +429,13 @@ paths:
         A Note represents additional information or instructions
 
         from a doctor regarding a specific medication.'
-      parameters: []
+      parameters:
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -486,6 +492,12 @@ paths:
         description: A unique integer value identifying this note.
         schema:
           type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       responses:
         '200':
           content:
@@ -508,6 +520,12 @@ paths:
         in: path
         required: true
         description: A unique integer value identifying this note.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
         schema:
           type: string
       responses:
