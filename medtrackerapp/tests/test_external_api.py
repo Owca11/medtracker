@@ -2,7 +2,7 @@
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from rest_framework import status
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from medtrackerapp.models import Medication
 
 

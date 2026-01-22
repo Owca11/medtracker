@@ -3,7 +3,7 @@ from medtrackerapp.models import Medication, DoseLog
 from django.urls import reverse
 from rest_framework import status
 from django.utils import timezone
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 import json
 
@@ -37,8 +37,6 @@ class MedicationViewTests(TestCase):
 
     def test_create_medication_valid_data(self):
         """Equivalence partition: valid medication data"""
-        # Get count before creation
-        initial_aspirin_count = Medication.objects.filter(name="Aspirin").count()
 
         url = reverse("medication-list")
         response = self.client.post(url, self.valid_payload, format='json')

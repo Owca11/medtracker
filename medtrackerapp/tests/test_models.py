@@ -2,9 +2,8 @@ from django.test import TestCase
 from medtrackerapp.models import Medication, DoseLog
 from django.utils import timezone
 from datetime import timedelta, datetime, date
-from django.core.exceptions import ValidationError
 from django.db import IntegrityError, DataError
-from unittest.mock import patch  # ADD THIS IMPORT
+from unittest.mock import patch
 
 
 class MedicationModelTests(TestCase):
