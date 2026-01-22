@@ -17,15 +17,15 @@ class DrugInfoServiceTests(TestCase):
                 {
                     "openfda": {
                         "generic_name": ["ibuprofen"],
-                        "manufacturer_name": ["Test Manufacturer"]
+                        "manufacturer_name": ["Test Manufacturer"],
                     },
                     "warnings": ["Keep out of reach of children"],
-                    "purpose": ["Pain relief"]
+                    "purpose": ["Pain relief"],
                 }
             ]
         }
 
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_resp = Mock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = mock_response
@@ -53,7 +53,7 @@ class DrugInfoServiceTests(TestCase):
 
     def test_get_drug_info_http_error(self):
         """Test API returns non-200 status code"""
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_resp = Mock()
             mock_resp.status_code = 404
             mock_get.return_value = mock_resp
@@ -67,7 +67,7 @@ class DrugInfoServiceTests(TestCase):
         """Test API returns empty results"""
         mock_response = {"results": []}
 
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_resp = Mock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = mock_response
@@ -80,7 +80,7 @@ class DrugInfoServiceTests(TestCase):
 
     def test_get_drug_info_connection_error(self):
         """Test network connection error"""
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_get.side_effect = requests.ConnectionError("Connection failed")
 
             with self.assertRaises(requests.ConnectionError):
@@ -88,7 +88,7 @@ class DrugInfoServiceTests(TestCase):
 
     def test_get_drug_info_timeout(self):
         """Test request timeout"""
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_get.side_effect = requests.Timeout("Request timed out")
 
             with self.assertRaises(requests.Timeout):
@@ -101,12 +101,12 @@ class DrugInfoServiceTests(TestCase):
                 {
                     "openfda": {},  # Empty openfda
                     "warnings": ["Test warning"],
-                    "purpose": ["Test purpose"]
+                    "purpose": ["Test purpose"],
                 }
             ]
         }
 
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_resp = Mock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = mock_response
@@ -114,7 +114,9 @@ class DrugInfoServiceTests(TestCase):
 
             result = DrugInfoService.get_drug_info("test_drug")
 
-            self.assertEqual(result["name"], "test_drug")  # Should fall back to input name
+            self.assertEqual(
+                result["name"], "test_drug"
+            )  # Should fall back to input name
             self.assertEqual(result["manufacturer"], "Unknown")
 
     def test_get_drug_info_with_list_fields(self):
@@ -124,13 +126,13 @@ class DrugInfoServiceTests(TestCase):
                 {
                     "openfda": {
                         "generic_name": ["ibuprofen", "advil"],
-                        "manufacturer_name": ["Manufacturer A", "Manufacturer B"]
+                        "manufacturer_name": ["Manufacturer A", "Manufacturer B"],
                     }
                 }
             ]
         }
 
-        with patch('medtrackerapp.services.requests.get') as mock_get:
+        with patch("medtrackerapp.services.requests.get") as mock_get:
             mock_resp = Mock()
             mock_resp.status_code = 200
             mock_resp.json.return_value = mock_response

@@ -17,13 +17,13 @@ class DrugInfoServiceMockTests(APITestCase):
     def setUp(self):
         """Set up test data"""
         self.medication = Medication.objects.create(
-            name="Aspirin",
-            dosage_mg=100,
-            prescribed_per_day=2
+            name="Aspirin", dosage_mg=100, prescribed_per_day=2
         )
-        self.url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        self.url = reverse(
+            "medication-get-external-info", kwargs={"pk": self.medication.pk}
+        )
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_success_response(self, mock_get_drug_info):
         """
         Test successful response from external API.
@@ -37,10 +37,10 @@ class DrugInfoServiceMockTests(APITestCase):
                     "openfda": {
                         "brand_name": ["Aspirin"],
                         "generic_name": ["acetylsalicylic acid"],
-                        "manufacturer_name": ["Bayer"]
+                        "manufacturer_name": ["Bayer"],
                     },
                     "dosage_form": ["TABLET"],
-                    "product_type": ["HUMAN OTC DRUG"]
+                    "product_type": ["HUMAN OTC DRUG"],
                 }
             ]
         }
@@ -53,7 +53,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertEqual(response.data, mock_response)
         mock_get_drug_info.assert_called_once_with("Aspirin")
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_empty_response(self, mock_get_drug_info):
         """
         Test empty response from external API.
@@ -61,9 +61,7 @@ class DrugInfoServiceMockTests(APITestCase):
         Boundary testing: API returns empty results for unknown medication.
         """
         # Mock empty API response
-        mock_response = {
-            "results": []
-        }
+        mock_response = {"results": []}
         mock_get_drug_info.return_value = mock_response
 
         response = self.client.get(self.url)
@@ -72,7 +70,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertEqual(response.data, mock_response)
         mock_get_drug_info.assert_called_once_with("Aspirin")
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_error_response(self, mock_get_drug_info):
         """
         Test error response from external API.
@@ -89,7 +87,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertEqual(response.data, mock_response)
         mock_get_drug_info.assert_called_once_with("Aspirin")
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_exception(self, mock_get_drug_info):
         """
         Test exception during API call.
@@ -106,7 +104,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertIn("Network connection failed", response.data["error"])
         mock_get_drug_info.assert_called_once_with("Aspirin")
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_timeout(self, mock_get_drug_info):
         """
         Test API timeout scenario.
@@ -122,7 +120,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertIn("error", response.data)
         self.assertIn("Request timed out", response.data["error"])
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_partial_data(self, mock_get_drug_info):
         """
         Test API response with partial/missing data.
@@ -148,7 +146,7 @@ class DrugInfoServiceMockTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, mock_response)
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_different_medication_names(self, mock_get_drug_info):
         """
         Test API with different medication name formats.
@@ -157,20 +155,26 @@ class DrugInfoServiceMockTests(APITestCase):
         """
         test_cases = [
             ("Aspirin", {"results": [{"openfda": {"brand_name": ["Aspirin"]}}]}),
-            ("ibuprofen", {"results": [{"openfda": {"brand_name": ["Advil", "Motrin"]}}]}),
+            (
+                "ibuprofen",
+                {"results": [{"openfda": {"brand_name": ["Advil", "Motrin"]}}]},
+            ),
             ("LISINOPRIL", {"results": [{"openfda": {"brand_name": ["Zestril"]}}]}),
-            ("Vitamin C", {"results": [{"openfda": {"brand_name": ["Ascorbic Acid"]}}]}),
+            (
+                "Vitamin C",
+                {"results": [{"openfda": {"brand_name": ["Ascorbic Acid"]}}]},
+            ),
         ]
 
         for med_name, mock_response in test_cases:
             with self.subTest(medication_name=med_name):
                 # Create medication with different name
                 medication = Medication.objects.create(
-                    name=med_name,
-                    dosage_mg=100,
-                    prescribed_per_day=1
+                    name=med_name, dosage_mg=100, prescribed_per_day=1
                 )
-                url = reverse("medication-get-external-info", kwargs={'pk': medication.pk})
+                url = reverse(
+                    "medication-get-external-info", kwargs={"pk": medication.pk}
+                )
 
                 mock_get_drug_info.return_value = mock_response
 
@@ -179,7 +183,7 @@ class DrugInfoServiceMockTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
                 mock_get_drug_info.assert_called_with(med_name)
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_multiple_calls(self, mock_get_drug_info):
         """
         Test multiple API calls to verify mock reset behavior.
@@ -204,7 +208,7 @@ class DrugInfoServiceMockTests(APITestCase):
         # Verify mock was called twice
         self.assertEqual(mock_get_drug_info.call_count, 2)
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_with_query_parameters(self, mock_get_drug_info):
         """
         Test that the service is called with correct parameters.
@@ -216,11 +220,9 @@ class DrugInfoServiceMockTests(APITestCase):
 
         # Test with different medication
         test_med = Medication.objects.create(
-            name="Test Medication 123",
-            dosage_mg=50,
-            prescribed_per_day=3
+            name="Test Medication 123", dosage_mg=50, prescribed_per_day=3
         )
-        url = reverse("medication-get-external-info", kwargs={'pk': test_med.pk})
+        url = reverse("medication-get-external-info", kwargs={"pk": test_med.pk})
 
         response = self.client.get(url)
 
@@ -235,12 +237,10 @@ class DrugInfoServiceIntegrationMockTests(APITestCase):
 
     def setUp(self):
         self.medication = Medication.objects.create(
-            name="Paracetamol",
-            dosage_mg=500,
-            prescribed_per_day=4
+            name="Paracetamol", dosage_mg=500, prescribed_per_day=4
         )
 
-    @patch('medtrackerapp.views.Medication.fetch_external_info')
+    @patch("medtrackerapp.views.Medication.fetch_external_info")
     def test_mock_at_view_level(self, mock_fetch_external_info):
         """
         Test mocking at the view level (Medication model method).
@@ -252,21 +252,21 @@ class DrugInfoServiceIntegrationMockTests(APITestCase):
                 {
                     "openfda": {
                         "brand_name": ["Tylenol"],
-                        "generic_name": ["acetaminophen"]
+                        "generic_name": ["acetaminophen"],
                     }
                 }
             ]
         }
         mock_fetch_external_info.return_value = mock_response
 
-        url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        url = reverse("medication-get-external-info", kwargs={"pk": self.medication.pk})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, mock_response)
         mock_fetch_external_info.assert_called_once()
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_mock_at_service_level(self, mock_get_drug_info):
         """
         Test mocking at the service level (DrugInfoService class).
@@ -278,7 +278,7 @@ class DrugInfoServiceIntegrationMockTests(APITestCase):
                 {
                     "openfda": {
                         "brand_name": ["Paracetamol"],
-                        "generic_name": ["paracetamol"]
+                        "generic_name": ["paracetamol"],
                     }
                 }
             ]
@@ -291,7 +291,7 @@ class DrugInfoServiceIntegrationMockTests(APITestCase):
         self.assertEqual(result, mock_response)
         mock_get_drug_info.assert_called_once_with("Paracetamol")
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_mock_chain_calls(self, mock_get_drug_info):
         """
         Test the complete chain: View -> Model -> Service.
@@ -303,14 +303,14 @@ class DrugInfoServiceIntegrationMockTests(APITestCase):
                 {
                     "openfda": {
                         "brand_name": ["Complete Chain Test"],
-                        "generic_name": ["test substance"]
+                        "generic_name": ["test substance"],
                     }
                 }
             ]
         }
         mock_get_drug_info.return_value = mock_response
 
-        url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        url = reverse("medication-get-external-info", kwargs={"pk": self.medication.pk})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -327,13 +327,13 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
 
     def setUp(self):
         self.medication = Medication.objects.create(
-            name="Edge Case Med",
-            dosage_mg=100,
-            prescribed_per_day=1
+            name="Edge Case Med", dosage_mg=100, prescribed_per_day=1
         )
-        self.url = reverse("medication-get-external-info", kwargs={'pk': self.medication.pk})
+        self.url = reverse(
+            "medication-get-external-info", kwargs={"pk": self.medication.pk}
+        )
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_large_response(self, mock_get_drug_info):
         """
         Test handling of large API responses.
@@ -346,9 +346,9 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
                 {
                     "openfda": {
                         "brand_name": [f"Brand {i}" for i in range(100)],
-                        "generic_name": [f"Generic {i}" for i in range(100)]
+                        "generic_name": [f"Generic {i}" for i in range(100)],
                     },
-                    "description": "A" * 1000  # Long string
+                    "description": "A" * 1000,  # Long string
                 }
                 for _ in range(10)  # Multiple items
             ]
@@ -360,7 +360,7 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, large_response)
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_special_characters(self, mock_get_drug_info):
         """
         Test API with medication names containing special characters.
@@ -377,11 +377,11 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
         for med_name in special_meds:
             with self.subTest(medication_name=med_name):
                 medication = Medication.objects.create(
-                    name=med_name,
-                    dosage_mg=100,
-                    prescribed_per_day=1
+                    name=med_name, dosage_mg=100, prescribed_per_day=1
                 )
-                url = reverse("medication-get-external-info", kwargs={'pk': medication.pk})
+                url = reverse(
+                    "medication-get-external-info", kwargs={"pk": medication.pk}
+                )
 
                 mock_response = {"results": [{"openfda": {"brand_name": [med_name]}}]}
                 mock_get_drug_info.return_value = mock_response
@@ -391,7 +391,7 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_200_OK)
                 mock_get_drug_info.assert_called_with(med_name)
 
-    @patch('medtrackerapp.models.DrugInfoService.get_drug_info')
+    @patch("medtrackerapp.models.DrugInfoService.get_drug_info")
     def test_external_api_concurrent_calls(self, mock_get_drug_info):
         """
         Test behavior with concurrent API calls.
@@ -404,11 +404,9 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
 
         def make_api_call(med_id, mock_response):
             medication = Medication.objects.create(
-                name=f"Concurrent Med {med_id}",
-                dosage_mg=100,
-                prescribed_per_day=1
+                name=f"Concurrent Med {med_id}", dosage_mg=100, prescribed_per_day=1
             )
-            url = reverse("medication-get-external-info", kwargs={'pk': medication.pk})
+            url = reverse("medication-get-external-info", kwargs={"pk": medication.pk})
 
             mock_get_drug_info.return_value = mock_response
             response = self.client.get(url)
@@ -418,10 +416,7 @@ class DrugInfoServiceEdgeCaseTests(APITestCase):
         threads = []
         for i in range(5):
             mock_response = {"results": [{"openfda": {"brand_name": [f"Med {i}"]}}]}
-            thread = threading.Thread(
-                target=make_api_call,
-                args=(i, mock_response)
-            )
+            thread = threading.Thread(target=make_api_call, args=(i, mock_response))
             threads.append(thread)
             thread.start()
 
