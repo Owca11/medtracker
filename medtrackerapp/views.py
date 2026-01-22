@@ -24,6 +24,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
         - GET /medications/{id}/info/ — fetch external drug info from OpenFDA
         - GET /medications/{id}/expected-doses/ — calculate expected doses over days
     """
+
     queryset = Medication.objects.all()
     serializer_class = MedicationSerializer
 
@@ -83,17 +84,16 @@ class MedicationViewSet(viewsets.ModelViewSet):
         try:
             expected_doses_value = medication.expected_doses(days)
         except ValueError as error:
-            return Response(
-                {"error": str(error)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(error)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Return success response
-        return Response({
-            "medication_id": medication.id,
-            "days": days,
-            "expected_doses": expected_doses_value
-        })
+        return Response(
+            {
+                "medication_id": medication.id,
+                "days": days,
+                "expected_doses": expected_doses_value,
+            }
+        )
 
     def _validate_days_parameter(self, request):
         """
@@ -112,7 +112,7 @@ class MedicationViewSet(viewsets.ModelViewSet):
         if days_param is None:
             return Response(
                 {"error": "Query parameter 'days' is required."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Check if parameter can be converted to integer
@@ -121,14 +121,14 @@ class MedicationViewSet(viewsets.ModelViewSet):
         except (ValueError, TypeError):
             return Response(
                 {"error": "Days must be a valid integer."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Check if parameter is positive
         if days_value <= 0:
             return Response(
                 {"error": "Days must be a positive integer greater than zero."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         return days_value
@@ -151,6 +151,7 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         - GET /logs/filter/?start=YYYY-MM-DD&end=YYYY-MM-DD —
           filter logs within a date range
     """
+
     queryset = DoseLog.objects.all()
     serializer_class = DoseLogSerializer
 
@@ -177,8 +178,10 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         # Check if parameters are provided
         if start_str is None or end_str is None:
             return Response(
-                {"error": "Both 'start' and 'end' query parameters are required and must be valid dates."},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error": "Both 'start' and 'end' query parameters are required and must be valid dates."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         start = parse_date(start_str)
@@ -187,14 +190,17 @@ class DoseLogViewSet(viewsets.ModelViewSet):
         # Check if parameters are valid dates
         if start is None or end is None:
             return Response(
-                {"error": "Both 'start' and 'end' must be valid dates in YYYY-MM-DD format."},
-                status=status.HTTP_400_BAD_REQUEST
+                {
+                    "error": "Both 'start' and 'end' must be valid dates in YYYY-MM-DD format."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        logs = self.get_queryset().filter(
-            taken_at__date__gte=start,
-            taken_at__date__lte=end
-        ).order_by("taken_at")
+        logs = (
+            self.get_queryset()
+            .filter(taken_at__date__gte=start, taken_at__date__lte=end)
+            .order_by("taken_at")
+        )
 
         serializer = self.get_serializer(logs, many=True)
         return Response(serializer.data)
@@ -214,13 +220,14 @@ class NoteViewSet(viewsets.ModelViewSet):
         - DELETE /notes/{id}/ — delete a note
         - PUT/PATCH are NOT ALLOWED (notes cannot be updated)
     """
+
     queryset = Note.objects.all()
     serializer_class = NoteSerializer
     filter_backends = (SearchFilter,)
-    search_fields = ['medication__name']
+    search_fields = ["medication__name"]
 
     # Disable PUT and PATCH methods since notes cannot be updated
-    http_method_names = ['get', 'post', 'delete', 'head', 'options']
+    http_method_names = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
         """
@@ -235,7 +242,7 @@ class NoteViewSet(viewsets.ModelViewSet):
             GET /notes/?search=aspirin
         """
         queryset = Note.objects.all()
-        medication_id = self.request.query_params.get('medication')
+        medication_id = self.request.query_params.get("medication")
 
         if medication_id is not None:
             try:

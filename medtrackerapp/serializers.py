@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Medication, DoseLog, Note
 
+
 class MedicationSerializer(serializers.ModelSerializer):
     adherence = serializers.SerializerMethodField()
 
@@ -18,7 +19,6 @@ class DoseLogSerializer(serializers.ModelSerializer):
         fields = ["id", "medication", "taken_at", "was_taken"]
 
 
-
 class NoteSerializer(serializers.ModelSerializer):
     """
     Serializer for Note model.
@@ -29,8 +29,8 @@ class NoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Note
-        fields = ['id', 'medication', 'text', 'date']
-        read_only_fields = ['id']
+        fields = ["id", "medication", "text", "date"]
+        read_only_fields = ["id"]
 
     def validate_medication(self, value):
         """Validate that medication exists."""
@@ -41,6 +41,7 @@ class NoteSerializer(serializers.ModelSerializer):
     def validate_date(self, value):
         """Validate date is not in the future."""
         from django.utils import timezone
+
         if value > timezone.now().date():
             raise serializers.ValidationError("Date cannot be in the future.")
         return value
